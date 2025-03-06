@@ -6,7 +6,7 @@ This repository contains scripts to build and install Claude Desktop on Linux di
 
 Claude Desktop is a native desktop application for Claude AI by Anthropic, providing access to Claude's AI capabilities with a dedicated interface. One of the main reasons to use the desktop client instead of the [Claude.ai website](https://claude.ai) is for MCP support, which allows your client to do things such as access your local file system and integrate with services the web client is unable to.
 
-Anthropic does not provide builds for the CLaude Desktop client -- even though 99% of their infrastructure runs on Linux. Because they do not provide an official client, we have to build ome ourselves. This script simply takes the latest available Windows build, extract it, and re-builds it.
+Anthropic does not provide Linux builds for the Claude Desktop client -- even though 99% of their infrastructure runs on Linux. This script simply takes the latest available Windows build, extracts it, and re-builds it.
 
 ## Requirements
 
