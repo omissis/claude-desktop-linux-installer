@@ -102,7 +102,8 @@ curl -fsSL https://get.pnpm.io/install.sh | sh -
 
 For Debian/Ubuntu:
 ```bash
-sudo apt-get install p7zip-full nodejs cargo rustc electron imagemagick icoutils
+sudo apt-get install p7zip-full nodejs cargo rustc imagemagick icoutils
+sudo npm install -g electron
 curl -fsSL https://get.pnpm.io/install.sh | sh -
 ```
 
