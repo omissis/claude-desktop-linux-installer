@@ -805,6 +805,10 @@ process_asar() {
         log_error "Failed to repackage app.asar"
         exit 1
     }
+
+    if [ -d /usr/lib/electron/resources/ ]; then
+        cp "${WORK_DIR}/lib/nat45/resources/en-US.json" /usr/lib/electron/resources/en-US.json
+    fi
 }
 
 # Create launcher script
