@@ -82,10 +82,10 @@ check_image_command() {
 # Install required dependencies
 install_dependencies() {
     log_info "Installing required dependencies..."
-    
+
     # Define required packages
     local REQUIRED_PACKAGES="p7zip nodejs rust cargo electron imagemagick icoutils wget"
-    
+
     # Check if packages are already installed
     local PACKAGES_TO_INSTALL=()
     for pkg in $REQUIRED_PACKAGES; do
@@ -93,7 +93,7 @@ install_dependencies() {
             PACKAGES_TO_INSTALL+=("$pkg")
         fi
     done
-    
+
     # Install missing packages
     if [ ${#PACKAGES_TO_INSTALL[@]} -gt 0 ]; then
         log_info "Installing packages: ${PACKAGES_TO_INSTALL[*]}"
@@ -101,16 +101,16 @@ install_dependencies() {
     else
         log_info "All required packages are already installed."
     fi
-    
+
     # Install pnpm if not already installed
     if ! command -v pnpm &> /dev/null; then
         log_info "Installing pnpm..."
         curl -fsSL https://get.pnpm.io/install.sh | sh -
-        
+
         # Source pnpm in the current session
         export PNPM_HOME="${HOME}/.local/share/pnpm"
         export PATH="${PNPM_HOME}:${PATH}"
-        
+
         # Check if pnpm was installed correctly
         if ! command -v pnpm &> /dev/null; then
             log_error "Failed to install pnpm. Please install it manually: curl -fsSL https://get.pnpm.io/install.sh | sh -"
@@ -122,13 +122,13 @@ install_dependencies() {
     log_info "Checking for required tools..."
     local deps=("7za" "pnpm" "node" "cargo" "rustc" "electron" "wrestool" "icotool")
     local missing=()
-    
+
     for dep in "${deps[@]}"; do
         if ! command -v "$dep" >/dev/null 2>&1; then
             missing+=("$dep")
         fi
     done
-    
+
     # Check for either magick or convert
     if ! check_image_command; then
         missing+=("ImageMagick")
@@ -146,13 +146,13 @@ remove_existing_installation() {
     rm -rf "${HOME}/.local/lib/claude-desktop"
     rm -f "${HOME}/.local/bin/claude-desktop"
     rm -f "${HOME}/.local/share/applications/claude-desktop.desktop"
-    
+
     # Remove icon files
     find "${HOME}/.local/share/icons" -name "claude.png" -delete
-    
+
     # Reset protocol handler
     xdg-mime default "" x-scheme-handler/claude 2>/dev/null || true
-    
+
     log_info "Claude Desktop has been successfully removed."
 }
 
@@ -161,7 +161,7 @@ setup_patchy_cnb() {
     log_info "Setting up patchy-cnb native module..."
     mkdir -p "$WORK_DIR/patchy-cnb"
     cd "$WORK_DIR/patchy-cnb"
-    
+
     # Create Cargo.toml with minimal dependencies
     cat > Cargo.toml << 'EOF'
 [package]
@@ -701,27 +701,27 @@ download_and_extract() {
     log_info "Downloading Claude Desktop..."
     mkdir -p "$WORK_DIR"
     cd "$WORK_DIR"
-    
+
     if [ ! -f "Claude-Setup-x64.exe" ]; then
         wget "$CLAUDE_URL" -O "Claude-Setup-x64.exe" || {
             log_error "Failed to download Claude Desktop"
             exit 1
         }
     fi
-    
+
     log_info "Extracting..."
     7z x -y "Claude-Setup-x64.exe" || {
         log_error "Failed to extract Claude-Setup-x64.exe"
         exit 1
     }
-    
+
     # Find the actual nupkg file instead of assuming the name
     NUPKG_FILE=$(find . -name "*.nupkg" | head -n 1)
     if [ -z "$NUPKG_FILE" ]; then
         log_error "Could not find .nupkg file"
         exit 1
     fi
-    
+
     7z x -y "$NUPKG_FILE" || {
         log_error "Failed to extract $NUPKG_FILE"
         exit 1
@@ -732,17 +732,17 @@ download_and_extract() {
 process_icons() {
     log_info "Processing icons..."
     cd "$WORK_DIR"
-    
+
     wrestool -x -t 14 "lib/net45/claude.exe" -o claude.ico || {
         log_error "Failed to extract icons from claude.exe"
         exit 1
     }
-    
+
     icotool -x claude.ico || {
         log_error "Failed to convert ico file"
         exit 1
     }
-    
+
     mkdir -p "$OUTPUT_DIR/share/icons/hicolor"
     for size in 16 24 32 48 64 256; do
         mkdir -p "$OUTPUT_DIR/share/icons/hicolor/${size}x${size}/apps"
@@ -757,49 +757,49 @@ process_icons() {
 process_asar() {
     log_info "Processing app.asar..."
     cd "$WORK_DIR"
-    
+
     mkdir -p "$OUTPUT_DIR/lib/claude-desktop"
     cp "lib/net45/resources/app.asar" "$OUTPUT_DIR/lib/claude-desktop/" || {
         log_error "Failed to copy app.asar"
         exit 1
     }
-    
+
     cp -r "lib/net45/resources/app.asar.unpacked" "$OUTPUT_DIR/lib/claude-desktop/" || {
         log_error "Failed to copy app.asar.unpacked"
         exit 1
     }
-    
+
     cd "$OUTPUT_DIR/lib/claude-desktop"
     npx asar extract app.asar app.asar.contents || {
         log_error "Failed to extract app.asar"
         exit 1
     }
-    
+
     # Replace native bindings
     cp "$WORK_DIR/patchy-cnb/patchy-cnb.linux-x64-gnu.node" \
         "app.asar.contents/node_modules/claude-native/claude-native-binding.node" || {
         log_error "Failed to copy native binding to app.asar.contents"
         exit 1
     }
-    
+
     cp "$WORK_DIR/patchy-cnb/patchy-cnb.linux-x64-gnu.node" \
         "app.asar.unpacked/node_modules/claude-native/claude-native-binding.node" || {
         log_error "Failed to copy native binding to app.asar.unpacked"
         exit 1
     }
-    
+
     # Copy Tray icons
     mkdir -p app.asar.contents/resources
     cp "$WORK_DIR/lib/net45/resources/Tray"* app.asar.contents/resources/ || {
         log_error "Failed to copy tray icons"
         exit 1
     }
-    
+
     # Create the missing i18n file
     log_info "Creating missing i18n file..."
     mkdir -p "app.asar.contents/resources/i18n"
     echo "{}" > "app.asar.contents/resources/i18n/en-US.json"
-    
+
     # Repackage app.asar
     npx asar pack app.asar.contents app.asar || {
         log_error "Failed to repackage app.asar"
@@ -811,15 +811,7 @@ process_asar() {
 create_launcher() {
     log_info "Creating launcher script..."
     mkdir -p "$OUTPUT_DIR/bin"
-    
-    # Get the path to electron cli.js
-    ELECTRON_CLI_PATH=$(find $(pnpm -g root) -name "cli.js" -path "*/electron/*" | head -n 1)
-    if [ -z "$ELECTRON_CLI_PATH" ]; then
-        log_warning "Could not find electron cli.js, using default path"
-        ELECTRON_CLI_PATH="$(pnpm -g root)/electron/cli.js"
-    fi
-    log_info "Using electron CLI path: $ELECTRON_CLI_PATH"
-    
+
     cat > "$OUTPUT_DIR/bin/claude-desktop" << EOF
 #!/bin/bash
 # Generated by Copilot
@@ -845,25 +837,17 @@ EOF
 # Install Claude Desktop to user's local application directory
 install_claude_desktop() {
     log_info "Installing Claude Desktop to user's local directories..."
-    
-    # Get the path to electron cli.js
-    ELECTRON_CLI_PATH=$(find $(pnpm -g root) -name "cli.js" -path "*/electron/*" | head -n 1)
-    if [ -z "$ELECTRON_CLI_PATH" ]; then
-        log_warning "Could not find electron cli.js, using default path"
-        ELECTRON_CLI_PATH="$(pnpm -g root)/electron/cli.js"
-    fi
-    log_info "Using electron CLI path: $ELECTRON_CLI_PATH"
-    
+
     # Create necessary directories
     mkdir -p "${HOME}/.local/bin"
     mkdir -p "${HOME}/.local/share/applications"
     mkdir -p "${HOME}/.local/share/icons"
     mkdir -p "${HOME}/.local/lib"
-    
+
     # Copy app files
     cp -r "${OUTPUT_DIR}/lib/claude-desktop" "${HOME}/.local/lib/"
     cp "${OUTPUT_DIR}/bin/claude-desktop" "${HOME}/.local/bin/"
-    
+
     # Create the .desktop file with the correct path and explicit icon
     cat > "${HOME}/.local/share/applications/claude-desktop.desktop" << EOF
 [Desktop Entry]
@@ -877,26 +861,26 @@ Categories=Utility;
 MimeType=x-scheme-handler/claude
 StartupWMClass=Claude
 EOF
-    
+
     # Copy icons
     cp -r "${OUTPUT_DIR}/share/icons/"* "${HOME}/.local/share/icons/"
-    
+
     # Update .desktop database
     if command -v update-desktop-database &> /dev/null; then
         update-desktop-database "${HOME}/.local/share/applications"
     else
         log_warning "update-desktop-database not found. Desktop entry might not be immediately visible."
     fi
-    
+
     # Set up Claude protocol handler
     xdg-mime default claude-desktop.desktop x-scheme-handler/claude
-    
+
     log_info "Adding ${HOME}/.local/bin to PATH if not already there..."
     if ! grep -q "export PATH=\"\$HOME/.local/bin:\$PATH\"" "${HOME}/.bashrc"; then
         echo 'export PATH="$HOME/.local/bin:$PATH"' >> "${HOME}/.bashrc"
         log_info "Added ${HOME}/.local/bin to PATH in .bashrc"
     fi
-    
+
     if [ -f "${HOME}/.zshrc" ]; then
         if ! grep -q "export PATH=\"\$HOME/.local/bin:\$PATH\"" "${HOME}/.zshrc"; then
             echo 'export PATH="$HOME/.local/bin:$PATH"' >> "${HOME}/.zshrc"
@@ -919,11 +903,11 @@ show_final_instructions() {
 # Build Claude Desktop
 build_claude_desktop() {
     log_info "Building Claude Desktop for Linux..."
-    
+
     # Create clean build environment
     rm -rf "$WORK_DIR" "$OUTPUT_DIR"
     mkdir -p "$WORK_DIR" "$OUTPUT_DIR"
-    
+
     setup_patchy_cnb
     download_and_extract
     process_icons
@@ -940,10 +924,10 @@ main() {
             exit 0
         fi
     done
-    
+
     log_info "Starting Claude Desktop installation/management for Arch Linux..."
     check_arch_linux
-    
+
     # Check for remove flag
     for arg in "$@"; do
         if [ "$arg" = "--remove" ]; then
@@ -951,19 +935,19 @@ main() {
             exit 0
         fi
     done
-    
+
     # Check for clean install flag
     for arg in "$@"; do
         if [ "$arg" = "--clean-install" ]; then
             remove_existing_installation
         fi
     done
-    
+
     # If no arguments provided and script is run directly, assume install
     if [ $# -eq 0 ]; then
         log_info "No options provided. Proceeding with default installation..."
     fi
-    
+
     install_dependencies
     build_claude_desktop
     install_claude_desktop
